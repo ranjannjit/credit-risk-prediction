@@ -20,6 +20,9 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+*.png
+*.pkl
+
 
 # Virtual environments
 .venv/
