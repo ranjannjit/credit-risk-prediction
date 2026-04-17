@@ -1,0 +1,6 @@
+split,rows
+train,199364
+train_no_outliers,199316
+val,42721
+test,42722
+train_smote,398040

@@ -1,0 +1,59 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+dist-info/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# VS Code settings
+.vscode/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Environment variables
+.env
+
+# macOS
+.DS_Store
+
+# Logs and databases
+*.log
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# Common large/unwanted media and docs
+*.mp4
+*.mov
+*.avi
+*.docx
+*.pptx
+Project-Slide.txt
