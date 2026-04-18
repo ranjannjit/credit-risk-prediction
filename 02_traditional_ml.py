@@ -192,8 +192,21 @@ def make_smote_pipeline(model):
 
 def print_cross_val_scores(model, X, y, cv=5):
     cv = StratifiedKFold(n_splits=cv, shuffle=True, random_state=RANDOM_STATE)
-    pipeline = make_smote_pipeline(model)
-    scores = cross_val_score(pipeline, X, y, cv=cv, scoring="roc_auc", n_jobs=-1)
+    model_for_cv = clone(model)
+    if isinstance(model_for_cv, VotingClassifier):
+        model_for_cv.n_jobs = 1
+    if isinstance(model_for_cv, SVC) and hasattr(model_for_cv, "probability"):
+        model_for_cv.probability = False
+    pipeline = make_smote_pipeline(model_for_cv)
+    cv_jobs = 1 if isinstance(model_for_cv, VotingClassifier) else -1
+    scores = cross_val_score(
+        pipeline,
+        X,
+        y,
+        cv=cv,
+        scoring="roc_auc",
+        n_jobs=cv_jobs,
+    )
     print(f"{model.__class__.__name__} CV ROC AUC scores: {scores.round(4)}")
     print(f"Mean ROC AUC: {scores.mean():.4f} ± {scores.std():.4f}")
     return scores
@@ -210,9 +223,17 @@ def plot_cv_roc_auc(model, X, y, cv=5, title_prefix="CV", out_prefix="cv"):
         X_val_fold = X.iloc[val_idx]
         y_train_fold = y.iloc[train_idx]
         y_val_fold = y.iloc[val_idx]
-        pipeline = make_smote_pipeline(model)
+        model_for_cv = clone(model)
+        if isinstance(model_for_cv, VotingClassifier):
+            model_for_cv.n_jobs = 1
+        if isinstance(model_for_cv, SVC) and hasattr(model_for_cv, "probability"):
+            model_for_cv.probability = False
+        pipeline = make_smote_pipeline(model_for_cv)
         pipeline.fit(X_train_fold, y_train_fold)
-        y_prob = pipeline.predict_proba(X_val_fold)[:, 1]
+        if hasattr(pipeline, "predict_proba"):
+            y_prob = pipeline.predict_proba(X_val_fold)[:, 1]
+        else:
+            y_prob = pipeline.decision_function(X_val_fold)
         fpr, tpr, _ = roc_curve(y_val_fold, y_prob)
         auc_score = roc_auc_score(y_val_fold, y_prob)
         aucs.append(auc_score)
@@ -261,7 +282,11 @@ models["RandomForest"] = RandomForestClassifier(
     n_estimators=200, random_state=RANDOM_STATE, n_jobs=-1
 )
 models["SVM"] = SVC(
-    kernel="rbf", probability=True, class_weight="balanced", random_state=RANDOM_STATE
+    kernel="rbf",
+    probability=True,
+    class_weight="balanced",
+    random_state=RANDOM_STATE,
+    cache_size=200,
 )
 if XGB_AVAILABLE:
     models["XGBoost"] = XGBClassifier(
@@ -279,19 +304,20 @@ voting_estimators = [(name.lower(), clone(model)) for name, model in models.item
 models["Voting"] = VotingClassifier(
     estimators=voting_estimators,
     voting="soft",
-    n_jobs=-1,
+    n_jobs=1,
 )
 
 results = []
 preds = {}
 for name, model in models.items():
+    cv_splits = 3 if name == "SVM" else 5
     print(f"\n=== {name} Cross-Validation ===")
-    print_cross_val_scores(model, Xtr, y_train_no_outliers, cv=5)
+    print_cross_val_scores(model, Xtr, y_train_no_outliers, cv=cv_splits)
     plot_cv_roc_auc(
         model,
         Xtr,
         y_train_no_outliers,
-        cv=5,
+        cv=cv_splits,
         title_prefix=name,
         out_prefix=f"{name.lower()}_train",
     )

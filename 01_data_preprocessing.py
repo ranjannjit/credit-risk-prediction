@@ -1,7 +1,9 @@
 # %% [markdown]
 # Credit Card Fraud Detection - End-to-End Notebook Style
 # Models: PyTorch CNN, PyTorch LSTM, Autoencoder, Logistic Regression, Decision Tree, Random Forest, XGBoost
-
+#The script now requires the Kaggle API package and configured credentials to auto-download:
+#install with pip install kaggle
+#place your API token at ~/.kaggle/kaggle.json or %USERPROFILE%\.kaggle\kaggle.json
 # %%
 import os, random, math, json, warnings
 
@@ -62,6 +64,46 @@ def save_plot(filename):
     plt.savefig(os.path.join(BASE_DIR, filename), dpi=200, bbox_inches="tight")
 
 
+KAGGLE_DATASET = "mlg-ulb/creditcardfraud"
+KAGGLE_FILE_NAME = "creditcard.csv"
+DATA_PATH = os.path.join(BASE_DIR, KAGGLE_FILE_NAME)
+
+
+def download_creditcard_csv(path: str) -> None:
+    print("creditcard.csv not found locally. Attempting to download from Kaggle...")
+    try:
+        from kaggle.api.kaggle_api_extended import KaggleApi
+    except ImportError as exc:
+        raise FileNotFoundError(
+            "creditcard.csv not found, and the Kaggle API is not installed.\n"
+            "Install it with `pip install kaggle` and configure your Kaggle API token.\n"
+            "Place the token at ~/.kaggle/kaggle.json or %USERPROFILE%\\.kaggle\\kaggle.json, then rerun this script.\n"
+            "See https://www.kaggle.com/docs/api for setup instructions."
+        ) from exc
+
+    api = KaggleApi()
+    api.authenticate()
+    download_zip = os.path.join(BASE_DIR, f"{KAGGLE_FILE_NAME}.zip")
+    print(f"Downloading {KAGGLE_FILE_NAME} from Kaggle dataset {KAGGLE_DATASET}...")
+    api.dataset_download_file(
+        KAGGLE_DATASET, KAGGLE_FILE_NAME, path=BASE_DIR, force=False, quiet=False
+    )
+
+    if os.path.exists(download_zip):
+        import zipfile
+
+        print(f"Extracting {download_zip}...")
+        with zipfile.ZipFile(download_zip, "r") as zf:
+            zf.extract(KAGGLE_FILE_NAME, BASE_DIR)
+        os.remove(download_zip)
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            "Failed to download creditcard.csv from Kaggle. "
+            "Verify your Kaggle credentials and dataset access, then try again."
+        )
+
+
 # %% [markdown]
 # ## 1) Load data
 # Kaggle dataset: https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud
@@ -69,13 +111,11 @@ def save_plot(filename):
 
 # %%
 # C:\Users\ranja\Ranjan_Doc\Ranjan\NJIT\ms\Deep Learning\Project\Project-credit_card_fraud_detection\credit_card_fraud_detection\creditcard.csv
-DATA_PATH = "creditcard.csv"  # put the Kaggle CSV in the same folder or update path
 if os.path.exists(DATA_PATH):
     df = pd.read_csv(DATA_PATH)
 else:
-    raise FileNotFoundError(
-        "Please download Kaggle creditcard.csv and place it at DATA_PATH."
-    )
+    download_creditcard_csv(DATA_PATH)
+    df = pd.read_csv(DATA_PATH)
 
 print(df.shape)
 print(df["Class"].value_counts())
